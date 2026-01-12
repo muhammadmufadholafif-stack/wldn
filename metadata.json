@@ -1,0 +1,7 @@
+{
+  "name": "LifeFlow: Integrated Daily Companion",
+  "description": "A holistic daily companion tracking hydration, tasks, prayer times, and fitness with AI-driven insights.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
