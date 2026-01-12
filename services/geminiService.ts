@@ -1,7 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { Task, WaterLog, UserProfile, SleepConfig, FitnessState } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Mengambil API Key dari env yang sudah kamu setting di vite.config.ts
+const apiKey = process.env.API_KEY || "";
+const genAI = new GoogleGenAI(apiKey);
 
 export const getDailyInsight = async (
   profile: UserProfile,
@@ -9,37 +11,37 @@ export const getDailyInsight = async (
   water: WaterLog,
   sleep: SleepConfig,
   fitness: FitnessState,
-  prayerCompletion: number // rough percentage estimate
+  prayerCompletion: number
 ): Promise<string> => {
+  // Jika API Key kosong, jangan panggil AI agar tidak crash
+  if (!apiKey) {
+    return "Lengkapi API Key di .env.local untuk mendapatkan insight kesehatan.";
+  }
+
   try {
+    // Pakai model gemini-1.5-flash (paling stabil & gratis)
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
     const completedTasks = tasks.filter(t => t.completed).length;
     const totalTasks = tasks.length;
     const waterPercentage = Math.round((water.current / water.goal) * 100);
 
     const prompt = `
-      Anda adalah LifeFlow, pendamping harian yang tenang, suportif, dan bijaksana.
-      Analisis statistik harian pengguna saat ini dan berikan wawasan motivasi singkat (maksimal 2 kalimat) dalam Bahasa Indonesia.
-      
-      Konteks Pengguna:
+      Anda adalah LifeFlow, pendamping harian yang tenang dan bijaksana.
+      Berikan 1-2 kalimat motivasi singkat dalam Bahasa Indonesia berdasarkan data ini:
       - Nama: ${profile.name}
-      - Tugas Selesai: ${completedTasks}/${totalTasks}
-      - Hidrasi: ${waterPercentage}%
-      - Jadwal Tidur Target: ${sleep.bedTime} - ${sleep.wakeTime}
-      - Olahraga Hari Ini: ${fitness.completed ? 'Sudah Selesai' : 'Belum'} (${fitness.activityType} jam ${fitness.scheduledTime})
-      - Keseimbangan Spiritual: Estimasi ${prayerCompletion}%
-
-      Nada: Stoik, menyemangati, singkat.
-      Saran harus holistik. Jika olahraga belum selesai dan waktu mendekati jadwal, ingatkan dengan halus.
+      - Tugas: ${completedTasks}/${totalTasks} selesai.
+      - Air: ${waterPercentage}% dari target.
+      - Olahraga: ${fitness.completed ? 'Sudah' : 'Belum'} dilakukan.
+      
+      Berikan saran yang menyemangati tapi tetap singkat.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    });
-
-    return response.text || "Tetap fokus dan jaga keseimbanganmu.";
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return "Fokus pada saat ini. Kemajuanmu adalah milikmu sendiri.";
+    console.error("AI Error:", error);
+    return "Tetap semangat menjalani hari ini!";
   }
 };
