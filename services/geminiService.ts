@@ -1,7 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { Task, WaterLog, UserProfile, SleepConfig, FitnessState } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Pastikan ini membaca API Key dari Vite
+const apiKey = process.env.API_KEY || "";
+const genAI = new GoogleGenAI(apiKey);
 
 export const getDailyInsight = async (
   profile: UserProfile,
@@ -9,37 +11,31 @@ export const getDailyInsight = async (
   water: WaterLog,
   sleep: SleepConfig,
   fitness: FitnessState,
-  prayerCompletion: number // rough percentage estimate
+  prayerCompletion: number
 ): Promise<string> => {
+  
+  // Jika API Key tidak ada, tampilkan pesan ini alih-alih error "Not Found"
+  if (!apiKey || apiKey === "PLACEHOLDER_API_KEY") {
+    return "API Key belum terpasang. Cek file .env.local Anda.";
+  }
+
   try {
+    // GANTI KE gemini-1.5-flash (Ini kuncinya agar tidak 'Not Found')
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
     const completedTasks = tasks.filter(t => t.completed).length;
-    const totalTasks = tasks.length;
     const waterPercentage = Math.round((water.current / water.goal) * 100);
 
-    const prompt = `
-      Anda adalah LifeFlow, pendamping harian yang tenang, suportif, dan bijaksana.
-      Analisis statistik harian pengguna saat ini dan berikan wawasan motivasi singkat (maksimal 2 kalimat) dalam Bahasa Indonesia.
-      
-      Konteks Pengguna:
-      - Nama: ${profile.name}
-      - Tugas Selesai: ${completedTasks}/${totalTasks}
-      - Hidrasi: ${waterPercentage}%
-      - Jadwal Tidur Target: ${sleep.bedTime} - ${sleep.wakeTime}
-      - Olahraga Hari Ini: ${fitness.completed ? 'Sudah Selesai' : 'Belum'} (${fitness.activityType} jam ${fitness.scheduledTime})
-      - Keseimbangan Spiritual: Estimasi ${prayerCompletion}%
+    const prompt = `Berikan 1 kalimat motivasi Bahasa Indonesia untuk ${profile.name}. 
+    Data: Tugas selesai ${completedTasks}/${tasks.length}, Minum ${waterPercentage}%, Olahraga ${fitness.completed ? 'Sudah' : 'Belum'}.`;
 
-      Nada: Stoik, menyemangati, singkat.
-      Saran harus holistik. Jika olahraga belum selesai dan waktu mendekati jadwal, ingatkan dengan halus.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    });
-
-    return response.text || "Tetap fokus dan jaga keseimbanganmu.";
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    return text || "Tetap semangat menjalani hari ini!";
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return "Fokus pada saat ini. Kemajuanmu adalah milikmu sendiri.";
+    console.error("AI Error:", error);
+    return "Gagal memuat insight. Pastikan API Key aktif dan kuota tersedia.";
   }
 };
