@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { Task, WaterLog, UserProfile, SleepConfig, FitnessState } from "../types";
 
-// Mengambil API Key dari env yang sudah kamu setting di vite.config.ts
+// Membaca API Key yang sudah disetting di vite.config.ts
 const apiKey = process.env.API_KEY || "";
 const genAI = new GoogleGenAI(apiKey);
 
@@ -13,28 +13,28 @@ export const getDailyInsight = async (
   fitness: FitnessState,
   prayerCompletion: number
 ): Promise<string> => {
-  // Jika API Key kosong, jangan panggil AI agar tidak crash
-  if (!apiKey) {
-    return "Lengkapi API Key di .env.local untuk mendapatkan insight kesehatan.";
+  
+  // Jika API Key belum diisi, jangan jalankan AI agar tidak error
+  if (!apiKey || apiKey === "PLACEHOLDER_API_KEY") {
+    return "Atur API Key di file .env.local untuk mendapatkan saran kesehatan.";
   }
 
   try {
-    // Pakai model gemini-1.5-flash (paling stabil & gratis)
+    // Menggunakan model Gemini 1.5 Flash (Gratis & Cepat)
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const completedTasks = tasks.filter(t => t.completed).length;
-    const totalTasks = tasks.length;
     const waterPercentage = Math.round((water.current / water.goal) * 100);
 
     const prompt = `
-      Anda adalah LifeFlow, pendamping harian yang tenang dan bijaksana.
-      Berikan 1-2 kalimat motivasi singkat dalam Bahasa Indonesia berdasarkan data ini:
+      Anda adalah LifeFlow, pendamping kesehatan harian. 
+      Tugas Anda: Berikan 1 kalimat motivasi singkat (Bahasa Indonesia) berdasarkan data berikut:
       - Nama: ${profile.name}
-      - Tugas: ${completedTasks}/${totalTasks} selesai.
-      - Air: ${waterPercentage}% dari target.
-      - Olahraga: ${fitness.completed ? 'Sudah' : 'Belum'} dilakukan.
-      
-      Berikan saran yang menyemangati tapi tetap singkat.
+      - Progress Tugas: ${completedTasks} selesai dari ${tasks.length}
+      - Minum Air: ${waterPercentage}% dari target
+      - Olahraga: ${fitness.completed ? 'Sudah dilakukan' : 'Belum dilakukan'}
+
+      Berikan saran yang menyemangati dan singkat.
     `;
 
     const result = await model.generateContent(prompt);
@@ -42,6 +42,6 @@ export const getDailyInsight = async (
     return response.text();
   } catch (error) {
     console.error("AI Error:", error);
-    return "Tetap semangat menjalani hari ini!";
+    return "Tetap semangat menjalani hari ini dan jaga kesehatan!";
   }
 };
